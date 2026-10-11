@@ -8,6 +8,9 @@ on:
       - "mail-vue/**"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   Deploy-cloud-mail:
     name: 🏗️ Build and Deploy
@@ -211,13 +214,14 @@ jobs:
         working-directory: ./mail-worker
         run: |
           echo "🚀 Starting deployment..."
+          set +e
           pnpm wrangler deploy -c wrangler-action.toml 2>&1 \
             | tee deploy.log \
             | grep -v "https://.*\.workers\.dev" \
-            | sed -E 's/env\.domain .*/env.domain (***)/' \
-            || true
+            | sed -E 's/env\.domain .*/env.domain (***)/'
           
           DEPLOY_EXIT_CODE=${PIPESTATUS[0]}
+          set -e
           if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
             exit 1
           fi
@@ -253,10 +257,3 @@ jobs:
             echo "❌ Failed. HTTP: $HTTP_CODE, Response: $RESPONSE_BODY"
             exit 1
           fi
-
-      - name: 🗑️ 删除运行记录 / Delete workflow runs
-        uses: GitRML/delete-workflow-runs@main
-        continue-on-error: true
-        with:
-          retain_days: '1'
-          keep_minimum_runs: '0'
